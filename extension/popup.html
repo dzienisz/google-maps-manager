@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <title>Google Maps Manager</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+
+  <!-- ── Header ──────────────────────────────────────────────────────────── -->
+  <div class="popup-header">
+    <svg class="logo" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="14" cy="14" r="14" fill="#4285F4"/>
+      <path d="M14 5C10.13 5 7 8.13 7 12c0 5.25 7 11 7 11s7-5.75 7-11c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S12.62 9.5 14 9.5s2.5 1.12 2.5 2.5S15.38 14.5 14 14.5z" fill="#fff"/>
+    </svg>
+    <h1>Google Maps Manager</h1>
+  </div>
+
+  <!-- ── Google Maps status ───────────────────────────────────────────────── -->
+  <div class="status-bar">
+    <div class="status-dot" id="status-dot"></div>
+    <span id="status-text">Sprawdzanie…</span>
+  </div>
+
+  <!-- ── Stats ────────────────────────────────────────────────────────────── -->
+  <div class="stats-grid">
+    <div class="stat-cell">
+      <div class="stat-value" id="stat-places">–</div>
+      <div class="stat-label">Zapisanych miejsc</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-value" id="stat-dups" style="color:var(--red)">–</div>
+      <div class="stat-label">Wykrytych duplikatów</div>
+    </div>
+  </div>
+
+  <!-- ── Actions ──────────────────────────────────────────────────────────── -->
+  <div class="popup-actions">
+    <button class="btn-block btn-primary-block" id="open-panel-btn">
+      📋 Otwórz panel boczny
+    </button>
+    <button class="btn-block btn-outline-block" id="scan-btn">
+      🔍 Skanuj stronę
+    </button>
+  </div>
+
+  <!-- ── Footer ───────────────────────────────────────────────────────────── -->
+  <div class="popup-footer" id="last-scan">Ostatni skan: —</div>
+
+  <script src="utils/duplicates.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

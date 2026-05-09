@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Google Maps Manager</title>
+  <link rel="stylesheet" href="panel.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- ── Header ──────────────────────────────────────────────────────────── -->
+    <div id="header">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5S13.38 11.5 12 11.5z" fill="#4285F4"/>
+      </svg>
+      <h1>Google Maps Manager</h1>
+      <button id="header-scan-btn" title="Skanuj bieżącą stronę Google Maps">🔍 Skanuj</button>
+    </div>
+
+    <!-- ── Tabs ─────────────────────────────────────────────────────────────── -->
+    <nav id="tabs" role="tablist">
+      <button class="tab-btn active" data-tab="places" role="tab" aria-selected="true">
+        Miejsca <span class="badge zero" id="tab-badge-places">0</span>
+      </button>
+      <button class="tab-btn" data-tab="duplicates" role="tab">
+        Duplikaty <span class="badge zero" id="tab-badge-dups">0</span>
+      </button>
+      <button class="tab-btn" data-tab="lists" role="tab">
+        Listy <span class="badge zero" id="tab-badge-lists">0</span>
+      </button>
+      <button class="tab-btn" data-tab="export" role="tab">Eksport</button>
+    </nav>
+
+    <!-- ── Content ──────────────────────────────────────────────────────────── -->
+    <div id="content">
+
+      <!-- ┌──────────────────────────────────────────────────────────────────┐ -->
+      <!-- │ Tab: Miejsca                                                      │ -->
+      <!-- └──────────────────────────────────────────────────────────────────┘ -->
+      <div class="tab-panel active" id="panel-places">
+
+        <div class="search-row">
+          <input type="search" class="search-input" id="places-search" placeholder="Szukaj miejsca…" autocomplete="off" />
+        </div>
+
+        <div class="filter-row">
+          <button class="filter-btn active" data-filter="all">Wszystkie</button>
+          <button class="filter-btn" data-filter="active">Aktywne</button>
+          <button class="filter-btn" data-filter="outdated">Nieaktualne</button>
+        </div>
+
+        <select class="list-select" id="places-list-filter">
+          <option value="">— Wszystkie listy —</option>
+        </select>
+
+        <div class="info-bar">
+          <span id="places-count">0 miejsc</span>
+          <button class="select-all-btn" id="select-all-btn">Zaznacz wszystkie</button>
+        </div>
+
+        <div class="place-list" id="place-list"></div>
+
+        <div id="empty-places" class="empty-state" style="display:none">
+          <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="32" cy="32" r="30" fill="#f1f3f4"/>
+            <path d="M32 14C24.27 14 18 20.27 18 28c0 10.5 14 26 14 26s14-15.5 14-26c0-7.73-6.27-14-14-14zm0 19c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z" fill="#bdc1c6"/>
+          </svg>
+          <h3>Brak zapisanych miejsc</h3>
+          <p>Otwórz Google Maps, przejdź do<br>sekcji „Zapisane" i kliknij „Skanuj".</p>
+        </div>
+
+      </div><!-- /panel-places -->
+
+      <!-- ┌──────────────────────────────────────────────────────────────────┐ -->
+      <!-- │ Tab: Duplikaty                                                    │ -->
+      <!-- └──────────────────────────────────────────────────────────────────┘ -->
+      <div class="tab-panel" id="panel-duplicates">
+
+        <div class="dup-header">
+          <button class="btn-primary" id="find-dups-btn">🔍 Znajdź duplikaty</button>
+          <p>Duplikaty to miejsca w odległości &lt;200 m o tej samej nazwie lub bardzo podobnej.</p>
+        </div>
+
+        <div id="dup-results"></div>
+
+        <div id="empty-dups" class="empty-state" style="display:none">
+          <svg width="56" height="56" viewBox="0 0 56 56" fill="none"><circle cx="28" cy="28" r="26" fill="#e6f4ea"/><path d="M22 28l5 5 10-10" stroke="#0F9D58" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <h3>Brak duplikatów</h3>
+          <p>Wszystkie miejsca wyglądają unikalnie.</p>
+        </div>
+
+      </div><!-- /panel-duplicates -->
+
+      <!-- ┌──────────────────────────────────────────────────────────────────┐ -->
+      <!-- │ Tab: Listy                                                        │ -->
+      <!-- └──────────────────────────────────────────────────────────────────┘ -->
+      <div class="tab-panel" id="panel-lists">
+
+        <div class="new-list-form">
+          <h3>Nowa lista</h3>
+          <div class="form-row">
+            <input type="text" class="form-input" id="new-list-name" placeholder="Nazwa listy…" maxlength="50" />
+          </div>
+          <div class="form-row">
+            <div class="color-picker" id="color-picker">
+              <button class="color-dot selected" style="background:#4285F4" data-color="#4285F4" title="Niebieski"></button>
+              <button class="color-dot" style="background:#0F9D58" data-color="#0F9D58" title="Zielony"></button>
+              <button class="color-dot" style="background:#F4B400" data-color="#F4B400" title="Żółty"></button>
+              <button class="color-dot" style="background:#DB4437" data-color="#DB4437" title="Czerwony"></button>
+              <button class="color-dot" style="background:#9c27b0" data-color="#9c27b0" title="Fioletowy"></button>
+              <button class="color-dot" style="background:#ff5722" data-color="#ff5722" title="Pomarańczowy"></button>
+            </div>
+          </div>
+          <button class="btn-primary" id="create-list-btn">Utwórz listę</button>
+        </div>
+
+        <div class="list-cards" id="list-cards"></div>
+
+        <div id="empty-lists" class="empty-state" style="display:none">
+          <svg width="56" height="56" viewBox="0 0 56 56" fill="none"><circle cx="28" cy="28" r="26" fill="#f1f3f4"/><rect x="16" y="20" width="24" height="4" rx="2" fill="#bdc1c6"/><rect x="16" y="28" width="18" height="4" rx="2" fill="#bdc1c6"/><rect x="16" y="36" width="20" height="4" rx="2" fill="#bdc1c6"/></svg>
+          <h3>Brak list</h3>
+          <p>Utwórz listę, aby organizować swoje miejsca.</p>
+        </div>
+
+      </div><!-- /panel-lists -->
+
+      <!-- ┌──────────────────────────────────────────────────────────────────┐ -->
+      <!-- │ Tab: Eksport                                                      │ -->
+      <!-- └──────────────────────────────────────────────────────────────────┘ -->
+      <div class="tab-panel" id="panel-export">
+
+        <div class="export-section">
+          <h3>Zakres eksportu</h3>
+          <p>Wybierz, które miejsca chcesz wyeksportować.</p>
+          <div class="export-scope">
+            <label for="export-scope-select">Zakres:</label>
+            <select id="export-scope-select">
+              <option value="all">Wszystkie miejsca</option>
+              <option value="active">Tylko aktywne</option>
+              <option value="outdated">Tylko nieaktualne</option>
+              <option value="list">Wybrana lista</option>
+            </select>
+          </div>
+          <div id="export-list-row" style="display:none; margin-bottom:10px">
+            <select id="export-list-select" class="list-select" style="margin-bottom:0">
+              <option value="">— wybierz listę —</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="export-section">
+          <h3>Format eksportu</h3>
+          <p>KML – do Google My Maps / Google Earth. CSV – do arkusza kalkulacyjnego. JSON – pełny backup.</p>
+          <div class="export-buttons">
+            <button class="btn-export" id="export-kml-btn">
+              🗺️ KML
+            </button>
+            <button class="btn-export" id="export-csv-btn">
+              📊 CSV
+            </button>
+            <button class="btn-export" id="export-json-btn">
+              📋 JSON
+            </button>
+          </div>
+        </div>
+
+        <div class="export-section">
+          <h3>Zarządzanie danymi</h3>
+          <p>Usuń wszystkie zapisane dane z rozszerzenia (nie usuwa miejsc z Google Maps).</p>
+          <button class="btn-export" id="clear-all-btn" style="color:var(--red);border-color:var(--red)">
+            🗑️ Wyczyść wszystkie dane
+          </button>
+        </div>
+
+      </div><!-- /panel-export -->
+
+    </div><!-- /content -->
+
+    <!-- ── Bulk action bar (sticky bottom) ──────────────────────────────────── -->
+    <div id="bulk-bar">
+      <span id="bulk-count">0 zaznaczonych</span>
+      <button class="bulk-btn" id="bulk-mark-outdated">Oznacz nieaktualne</button>
+      <button class="bulk-btn" id="bulk-add-list">Dodaj do listy</button>
+      <button class="bulk-btn danger" id="bulk-delete">Usuń</button>
+    </div>
+
+  </div><!-- /app -->
+
+  <!-- ── Toast container ───────────────────────────────────────────────────── -->
+  <div id="toast-container"></div>
+
+  <!-- ── Scripts (order matters) ──────────────────────────────────────────── -->
+  <script src="utils/storage.js"></script>
+  <script src="utils/duplicates.js"></script>
+  <script src="utils/exportUtils.js"></script>
+  <script src="panel.js"></script>
+</body>
+</html>
