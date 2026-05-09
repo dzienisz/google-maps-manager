@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Google Maps Manager",
   "version": "1.0.0",
-  "description": "Zarządzaj zapisanymi miejscami w Google Maps – duplikaty, listy, eksport",
+  "description": "Zarzadzaj zapisanymi miejscami w Google Maps - duplikaty, listy, eksport",
   "permissions": ["storage", "sidePanel", "scripting", "tabs", "activeTab"],
   "host_permissions": [
     "https://www.google.com/maps/*",
@@ -40,7 +40,7 @@
   "web_accessible_resources": [
     {
       "resources": ["inject.js"],
-      "matches": ["https://www.google.com/maps/*", "https://maps.google.com/*"]
+      "matches": ["https://www.google.com/*"]
     }
   ]
 }
