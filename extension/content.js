@@ -140,53 +140,65 @@
     }
   });
 
+  // ── Validate that a string looks like a real place name ───────────────────
+  function isValidPlaceName(name) {
+    if (!name || typeof name !== 'string') return false;
+    const s = name.trim();
+    if (s.length < 3 || s.length > 100) return false;
+    // Must have at least one letter (Latin or Polish)
+    if (!/[a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/.test(s)) return false;
+    // Reject URLs
+    if (/^https?:\/\//i.test(s) || /^\/[a-z\/]/.test(s)) return false;
+    // Reject Google place CIDs like 0x471ec...:0xfa4a...
+    if (/^0x[0-9a-f]+/i.test(s)) return false;
+    // Reject long tracking/session IDs (20+ alnum chars, no spaces)
+    if (/^[A-Za-z0-9_\-]{20,}$/.test(s)) return false;
+    // Reject ISO timestamps
+    if (/^\d{4}-\d{2}-\d{2}T/.test(s)) return false;
+    // Reject known UI strings
+    const UI_STRINGS = [
+      'wyszukaj', 'menu', 'kopiuj', 'trasa', 'filmy', 'tenis',
+      'pokaż', 'dostępne', 'najnowsze', 'wyszukaj opinie',
+      'search', 'directions', 'share', 'save', 'close',
+    ];
+    if (UI_STRINGS.includes(s.toLowerCase())) return false;
+    // Reject strings prefixed with meta labels
+    if (/^(Witryna:|Plus Code:|Kopiuj|Dostępne|Najnowsze·|Pokaż)/.test(s)) return false;
+    return true;
+  }
+
   // ── Scan current page DOM for saved places ─────────────────────────────────
   function scanCurrentPage() {
     const places = [];
     const seen = new Set();
 
-    // Strategy 1: role="article" or role="listitem" with headings
-    const articles = document.querySelectorAll(
-      '[role="article"], [role="listitem"], [role="row"]'
-    );
-    articles.forEach((el) => {
-      const place = extractPlaceFromElement(el);
-      if (place && place.title && !seen.has(place.title)) {
-        seen.add(place.title);
-        places.push(place);
-      }
-    });
-
-    // Strategy 2: anchor elements with /maps/place/ href
+    // Strategy 1 (most reliable): anchors pointing to /maps/place/
+    // These are actual place links Google Maps renders in the sidebar
     document.querySelectorAll('a[href*="/maps/place/"]').forEach((anchor) => {
-      const href = anchor.href;
-      const place = extractPlaceFromAnchor(anchor, href);
-      if (place && place.title && !seen.has(place.title)) {
+      const place = extractPlaceFromAnchor(anchor, anchor.href);
+      if (place && isValidPlaceName(place.title) && !seen.has(place.title)) {
         seen.add(place.title);
         places.push(place);
       }
     });
 
-    // Strategy 3: aria-label attributes that look like place names
-    document
-      .querySelectorAll('[aria-label][data-hveid], [aria-label][jsaction]')
-      .forEach((el) => {
-        const label = el.getAttribute('aria-label');
-        if (label && label.length > 2 && label.length < 100) {
-          const place = {
-            title: label,
-            address: '',
-            lat: null,
-            lng: null,
-            googleMapsUrl: '',
-            category: '',
-          };
-          if (!seen.has(place.title)) {
-            seen.add(place.title);
-            places.push(place);
-          }
-        }
-      });
+    // Strategy 2: role="article" / role="listitem" that contain a maps link
+    // Scoped to the sidebar panel to avoid body-wide noise
+    const sidebar =
+      document.querySelector('[role="main"]') ||
+      document.querySelector('[id*="pane"]') ||
+      document.querySelector('[jsaction*="pane"]') ||
+      document.body;
+
+    sidebar.querySelectorAll('[role="article"], [role="listitem"]').forEach((el) => {
+      // Only process if element contains a /maps/place/ anchor
+      if (!el.querySelector('a[href*="/maps/place/"]')) return;
+      const place = extractPlaceFromElement(el);
+      if (place && isValidPlaceName(place.title) && !seen.has(place.title)) {
+        seen.add(place.title);
+        places.push(place);
+      }
+    });
 
     if (places.length > 0) {
       chrome.runtime.sendMessage({ type: 'PLACES_CAPTURED', places });
@@ -247,11 +259,13 @@
   }
 
   function extractPlaceFromAnchor(anchor, href) {
-    const title =
+    // Prefer aria-label (usually the place name), then visible text
+    const title = (
       anchor.getAttribute('aria-label') ||
       anchor.title ||
-      anchor.textContent.trim();
-    if (!title) return null;
+      anchor.textContent.trim()
+    ).trim();
+    if (!isValidPlaceName(title)) return null;
 
     const coords = extractCoordsFromUrl(href);
     return {
@@ -311,47 +325,42 @@
   }
 
   function tryExtractPlace(arr) {
-    // Heuristic: first element is title string, somewhere has lat/lng pair
     const title = typeof arr[0] === 'string' ? arr[0].trim() : null;
-    if (!title || title.length < 2 || title.length > 200) return null;
+    // Require a valid place name — this rejects CIDs, tracking IDs, URLs, etc.
+    if (!isValidPlaceName(title)) return null;
 
-    let lat = null,
-      lng = null,
-      address = '',
-      url = '';
+    let lat = null, lng = null, address = '', url = '';
 
-    // Scan all elements in arr for coordinates (numbers in plausible range)
-    const flatNums = [];
+    // Require a /maps/place/ URL somewhere in the structure — strong signal
+    // that this is an actual place entry, not a random API array
     JSON.stringify(arr, (_, v) => {
-      if (typeof v === 'number') flatNums.push(v);
+      if (typeof v === 'string' && v.includes('/maps/place/') && !url) url = v;
       return v;
     });
+    if (!url) return null; // Without a maps URL this is almost certainly noise
 
+    // Extract coordinates
+    const flatNums = [];
+    JSON.stringify(arr, (_, v) => { if (typeof v === 'number') flatNums.push(v); return v; });
     for (let i = 0; i < flatNums.length - 1; i++) {
-      const a = flatNums[i],
-        b = flatNums[i + 1];
-      if (
-        a >= -90 && a <= 90 && Math.abs(a) > 0.001 &&
-        b >= -180 && b <= 180 && Math.abs(b) > 0.001
-      ) {
-        lat = a;
-        lng = b;
-        break;
+      const a = flatNums[i], b = flatNums[i + 1];
+      if (a >= -90 && a <= 90 && Math.abs(a) > 0.01 &&
+          b >= -180 && b <= 180 && Math.abs(b) > 0.01) {
+        lat = a; lng = b; break;
       }
     }
 
-    // Look for address string and URL
+    // Extract address (string with a digit, not a URL, not the title)
     JSON.stringify(arr, (_, v) => {
-      if (typeof v === 'string') {
-        if (!address && v.length > 5 && v.length < 200 && v !== title && /\d/.test(v)) {
-          address = v;
-        }
-        if (!url && v.includes('/maps/place/')) url = v;
+      if (!address && typeof v === 'string' && v !== title &&
+          v.length > 5 && v.length < 150 &&
+          /\d/.test(v) && !/^https?:\/\//.test(v) &&
+          !v.includes('/maps/')) {
+        address = v;
       }
       return v;
     });
 
-    if (!lat && !address) return null; // Not enough data
     return { title, address, lat, lng, googleMapsUrl: url, category: '' };
   }
 
