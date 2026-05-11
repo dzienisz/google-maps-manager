@@ -19,6 +19,13 @@
 
   injectScript();
 
+  // Safe wrapper — avoids "Extension context invalidated" after extension reload
+  function safeSend(msg) {
+    try {
+      chrome.runtime.sendMessage(msg);
+    } catch (_) {}
+  }
+
   // ── 2. Listen for messages from inject.js ────────────────────────────────
   window.addEventListener('message', (event) => {
     if (event.source !== window) return;
@@ -27,17 +34,11 @@
     const msg = event.data;
 
     if (msg.type === 'API_RESPONSE') {
-      // Try to extract places from the API response data
       const places = parseApiResponse(msg.url, msg.data);
-      if (places.length > 0) {
-        chrome.runtime.sendMessage({ type: 'PLACES_CAPTURED', places });
-      }
-      // Also forward raw data in case panel wants it
-      chrome.runtime.sendMessage({ type: 'RAW_API_RESPONSE', url: msg.url }).catch(() => {});
+      if (places.length > 0) safeSend({ type: 'PLACES_CAPTURED', places });
     }
 
     if (msg.type === 'URL_CHANGED') {
-      // Slight delay to let DOM settle after SPA navigation
       setTimeout(() => {
         if (msg.url && (msg.url.includes('/saved') || msg.url.includes('saved/'))) {
           scanCurrentPage();
@@ -99,7 +100,7 @@
     });
 
     btn.addEventListener('click', () => {
-      chrome.runtime.sendMessage({ type: 'OPEN_PANEL' });
+      safeSend({ type: 'OPEN_PANEL' });
     });
 
     document.body.appendChild(btn);
@@ -201,7 +202,7 @@
     });
 
     if (places.length > 0) {
-      chrome.runtime.sendMessage({ type: 'PLACES_CAPTURED', places });
+      safeSend({ type: 'PLACES_CAPTURED', places });
     }
 
     return places;

@@ -12,6 +12,11 @@ async function sendMessage(msg) {
 }
 
 async function init() {
+  // Show version from manifest
+  const manifest = chrome.runtime.getManifest();
+  const versionEl = document.getElementById('version-badge');
+  if (versionEl) versionEl.textContent = `v${manifest.version}`;
+
   // Check if current tab is Google Maps
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   const isOnMaps =
